@@ -13,7 +13,13 @@ MergCBUS::MergCBUS(byte num_node_vars,byte num_events,byte num_events_var,byte m
     //ctor
     messageFilter=0;
     bufferIndex=0;
+    
+#ifdef PROCESSOR_TEENSY_3_1
+    CANbus=FlexCAN(125000);
+#else
     Can=MCP_CAN();
+#endif
+    
     msgBuffer=CircularBuffer();
     memory=MergMemoryManagement(num_node_vars,num_events,num_events_var,max_device_numbers);
     nodeId=MergNodeIdentification();
@@ -109,26 +115,37 @@ MergCBUS::~MergCBUS()
 * @param retryIntervalMilliseconds is the delay in milliseconds between each retry.
 */
 
+#ifdef PROCESSOR_TEENSY_3_1
+#else
+#endif
+
 bool MergCBUS::initCanBus(unsigned int port,unsigned int rate,unsigned int retries,unsigned int retryIntervalMilliseconds){
 
     unsigned int r=0;
-    Can.set_cs(port);
 
+#ifdef PROCESSOR_TEENSY_3_1
+    CANbus.begin();
+#else
+    Can.set_cs(port);
     do {
         if (CAN_OK==Can.begin(rate)){
-
-            #ifdef DEBUGDEF
-                Serial.println("Can rate set");
-            #endif // DEBUGDEF
+            
+    #ifdef DEBUGDEF
+            Serial.println("Can rate set");
+    #endif // DEBUGDEF
             return true;
         }
         r++;
         delay(retryIntervalMilliseconds);
     }while (r<retries);
-
+    
     #ifdef DEBUGDEF
-                Serial.println("Failed to set Can rate");
+            Serial.println("Failed to set Can rate");
     #endif // DEBUGDEF
+    
+#endif
+    
+
 
    return false;
 }
@@ -229,7 +246,26 @@ unsigned int MergCBUS::mainProcess(){
                 Serial.println(nodeId.getCanID(),HEX);
             #endif // DEBUGDEF
 
+#ifdef PROCESSOR_TEENSY_3_1
+            CAN_message_t txmsg;
+            txmsg.id = nodeId.getCanID();
+            txmsg.len = 0;
+            txmsg.rtr = 0;
+            txmsg.ext = 0;
+            txmsg.buf[0] = 0;
+            txmsg.buf[1] = 0;
+            txmsg.buf[2] = 0;
+            txmsg.buf[3] = 0;
+            txmsg.buf[4] = 0;
+            txmsg.buf[5] = 0;
+            txmsg.buf[6] = 0;
+            txmsg.buf[7] = 0;
+
+            CANbus.write(txmsg);
+#else
             Can.sendMsgBuf(nodeId.getCanID(),0,0,mergCanData);
+#endif
+
             return OK;
         }
     }

@@ -3,6 +3,12 @@
 //typedef char byte;
 #endif // BYTE_TYPE
 
+//#if defined(__arm__) && defined(CORE_TEENSY)
+#if defined(__MK20DX256__)
+#define PROCESSOR_TEENSY_3_1	1
+#endif
+//#endif
+
 #ifndef MESSAGEPARSER_H
 #define MESSAGEPARSER_H
 
@@ -14,11 +20,18 @@
 #include <avr/wdt.h>
 #include "Message.h"
 #include "MergNodeIdentification.h"
-#include "mcp_can.h"
 #include "MergMemoryManagement.h"
 #include "CircularBuffer.h"
 
+
+#ifdef PROCESSOR_TEENSY_3_1
+#define Reset_AVR()
+#include <FlexCAN.h>
+#warning TEENSY detected
+#else
 #define Reset_AVR() asm volatile ("  jmp 0");
+#include "mcp_can.h"
+#endif
 
 #define SELF_ENUM_TIME 1000      /** Defines the timeout used for self ennumeration mode.Milliseconds*/
 #define TEMP_BUFFER_SIZE 128    /** Size of a internal buffer for general usage.*/
@@ -55,6 +68,9 @@ enum can_error {OK=0,                   /**< Message sent.*/
 *   A general class that support the MergCBUS protocol.
 *   The class is used to all operations regarding the protocol, but is flexible enough to allow you to use general can messages.
 *   It uses a modified version of mcp_can.h, that included the CAN header manipulation and RTR messages.
+*
+*   The Teensy 3.1 version uses a modified version of FlexCAN....
+*
 *   When using the CBUS the user has to set the node information:
 *   -The manufacturer ID as a HEX numeric (If the manufacturer has a NMRA number this can be used)
 *   -Minor code version as an alphabetic character (ASCII)
@@ -159,7 +175,14 @@ class MergCBUS
     protected:
     private:
         //let the bus level lib private
-        MCP_CAN Can;                            /** The CAN object. Deal with the transport layer.*/
+    
+    
+#ifdef PROCESSOR_TEENSY_3_1
+    FlexCAN CANbus;
+#else
+    MCP_CAN Can;                            /** The CAN object. Deal with the transport layer.*/
+#endif
+    
         byte node_mode;                         /** Slim or Flim*/
         byte mergCanData[CANDATA_SIZE];         //can data . CANDATA_SIZE defined in message.h
         Message message;                        //canbus message representation
