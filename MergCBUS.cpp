@@ -121,11 +121,11 @@ MergCBUS::~MergCBUS()
 
 bool MergCBUS::initCanBus(unsigned int port,unsigned int rate,unsigned int retries,unsigned int retryIntervalMilliseconds){
 
-    unsigned int r=0;
 
 #ifdef USE_FLEXCAN
     CANbus.begin();
 #else
+    unsigned int r=0;
     Can.set_cs(port);
     do {
         if (CAN_OK==Can.begin(rate)){
@@ -253,7 +253,7 @@ unsigned int MergCBUS::mainProcess(){
             txmsg.len = 0;
             txmsg.rtr = 0;
             txmsg.ext = 0;
-            for(i = 0; i<txmsg.len; i++)
+            for(i = 0; i<8; i++)
             {
                 txmsg.buf[i] = 0;
             }
@@ -350,7 +350,6 @@ unsigned int MergCBUS::mainProcess(){
 * @return true if a message in the can bus.
 */
 bool MergCBUS::readCanBus(byte buf_num){
-    byte len=0;//number of bytes read.
     bool resp;
     byte bufIdxdata=115;//position in the general buffer. data need 8 bytes
     byte bufIdxhead=110;//position in the general buffer. header need 4 bytes
@@ -399,6 +398,7 @@ bool MergCBUS::readCanBus(byte buf_num){
         }
     }
 #else
+    byte len=0;//number of bytes read.
     resp=readCanBus(&buffer[bufIdxdata],&buffer[bufIdxhead],&len,buf_num);
     if (resp){
         message.clear();
@@ -470,7 +470,6 @@ bool MergCBUS::readCanBus(){
 * @return number of bytes read;
 */
 bool MergCBUS::readCanBus(byte *data,byte *header,byte *length,byte buf_num){
-    byte resp;
 #ifdef USE_FLEXCAN
     int i;
     CAN_message_t rxmsg;
@@ -505,6 +504,7 @@ bool MergCBUS::readCanBus(byte *data,byte *header,byte *length,byte buf_num){
         return false;
     }
 #else
+    byte resp;
     if(CAN_MSGAVAIL == Can.checkReceive()) // check if data coming
     {
         resp=Can.readMsgBuf(length,data,buf_num);
@@ -552,7 +552,18 @@ void MergCBUS::doSelfEnnumeration(bool softEnum){
     softwareEnum=softEnum;
     state_mode=SELF_ENUMERATION;
 #ifdef USE_FLEXCAN
-#error Need to implement in FlexCAN
+    int i = 0;
+    CAN_message_t txmsg;
+    txmsg.id = nodeId.getCanID();
+    txmsg.len = 0;
+    txmsg.rtr = 1;
+    txmsg.ext = 0;
+    for(i = 0; i<8; i++)
+    {
+        txmsg.buf[i] = 0;
+    }
+    
+    CANbus.write(txmsg);
 #else
     Can.setPriority(PRIO_LOW,PRIO_MIN_LOWEST);
     Can.sendRTMMessage(nodeId.getCanID());
@@ -600,7 +611,19 @@ void MergCBUS::finishSelfEnumeration(){
                        highByte(nodeId.getNodeNumber()),
                        lowByte(nodeId.getNodeNumber())  );
 #ifdef USE_FLEXCAN
-#error Need to implement in FlexCAN
+        int i = 0;
+        CAN_message_t txmsg;
+        txmsg.id = nodeId.getCanID();
+        txmsg.len = 3;
+        txmsg.rtr = 0;
+        txmsg.ext = 0;
+        for(i = 0; i<txmsg.len; i++)
+        {
+            txmsg.buf[i] = mergCanData[i];
+        }
+        
+        
+        CANbus.write(txmsg);
 #else
         Can.sendMsgBuf(nodeId.getCanID(),0,3,mergCanData);
 #endif
@@ -1846,10 +1869,46 @@ byte MergCBUS::sendOffEvent3(bool longEvent,unsigned int event,byte var1,byte va
 * @return true if a message in the can bus.
 */
 void MergCBUS::cbusRead(){
-    byte len=0;//number of bytes read.
     byte bufIdx=110;//1 byte for the message size.1 byte for RTR, 4 bytes for header. 8 bytes to max message
 
     bool resp;
+#ifdef USE_FLEXCAN
+    int i;
+    byte bufIdxhead = bufIdx+2;
+    byte bufIdxdata = bufIdx+6;
+    CAN_message_t rxmsg;
+    if(CANbus.available())
+    {
+        if (CANbus.read(rxmsg))
+        {
+            buffer[bufIdx]=rxmsg.len;
+            buffer[bufIdx+1]=rxmsg.rtr;
+            for (i=0;i<rxmsg.len;i++)
+            {
+                buffer[bufIdxdata+i]=rxmsg.buf[i];
+            }
+            if (rxmsg.ext)
+            {
+                buffer[bufIdxhead+3] = (byte) (rxmsg.id & 0xFF);
+                buffer[bufIdxhead+2] = (byte) (rxmsg.id >> 8);
+                buffer[bufIdxhead+1] = (byte) ((rxmsg.id>>16) & 0x03);
+                buffer[bufIdxhead+1] += (byte) (((rxmsg.id>>16) & 0x1C) << 3);
+                buffer[bufIdxhead+1] |= 0x08 ;
+                buffer[bufIdxhead+0] = (byte) ((rxmsg.id>>16) >> 5 );
+            }
+            else
+            {
+                buffer[bufIdxhead+0] = (byte) (rxmsg.id >> 3 );
+                buffer[bufIdxhead+1] = (byte) ((rxmsg.id & 0x07 ) << 5);
+                buffer[bufIdxhead+2] = 0;
+                buffer[bufIdxhead+3] = 0;
+            }
+            msgBuffer.put(&buffer[bufIdx]);
+        }
+       
+    }
+#else
+    byte len=0;//number of bytes read.
     //read buffer 0 and buffer 1
     for (int i=0;i<2;i++){
         resp=readCanBus(&buffer[bufIdx+6],&buffer[bufIdx+2],&len,i);
@@ -1888,4 +1947,5 @@ void MergCBUS::cbusRead(){
             msgBuffer.put(&buffer[bufIdx]);
           }
     }
+#endif
 }
