@@ -14,8 +14,8 @@ MergCBUS::MergCBUS(byte num_node_vars,byte num_events,byte num_events_var,byte m
     messageFilter=0;
     bufferIndex=0;
     
-#ifdef PROCESSOR_TEENSY_3_1
-    CANbus=FlexCAN(125000);
+#ifdef USE_FLEXCAN
+    CANbus=FlexCAN(CAN_125KBPS);
 #else
     Can=MCP_CAN();
 #endif
@@ -115,7 +115,7 @@ MergCBUS::~MergCBUS()
 * @param retryIntervalMilliseconds is the delay in milliseconds between each retry.
 */
 
-#ifdef PROCESSOR_TEENSY_3_1
+#ifdef USE_FLEXCAN
 #else
 #endif
 
@@ -123,7 +123,7 @@ bool MergCBUS::initCanBus(unsigned int port,unsigned int rate,unsigned int retri
 
     unsigned int r=0;
 
-#ifdef PROCESSOR_TEENSY_3_1
+#ifdef USE_FLEXCAN
     CANbus.begin();
 #else
     Can.set_cs(port);
@@ -246,20 +246,18 @@ unsigned int MergCBUS::mainProcess(){
                 Serial.println(nodeId.getCanID(),HEX);
             #endif // DEBUGDEF
 
-#ifdef PROCESSOR_TEENSY_3_1
+#ifdef USE_FLEXCAN
+            int i = 0;
             CAN_message_t txmsg;
             txmsg.id = nodeId.getCanID();
             txmsg.len = 0;
             txmsg.rtr = 0;
             txmsg.ext = 0;
-            txmsg.buf[0] = 0;
-            txmsg.buf[1] = 0;
-            txmsg.buf[2] = 0;
-            txmsg.buf[3] = 0;
-            txmsg.buf[4] = 0;
-            txmsg.buf[5] = 0;
-            txmsg.buf[6] = 0;
-            txmsg.buf[7] = 0;
+            for(i = 0; i<txmsg.len; i++)
+            {
+                txmsg.buf[i] = 0;
+            }
+
 
             CANbus.write(txmsg);
 #else
@@ -357,6 +355,8 @@ bool MergCBUS::readCanBus(byte buf_num){
     byte bufIdxdata=115;//position in the general buffer. data need 8 bytes
     byte bufIdxhead=110;//position in the general buffer. header need 4 bytes
     eventmatch=false;
+#ifdef USE_FLEXCAN
+#else
     resp=readCanBus(&buffer[bufIdxdata],&buffer[bufIdxhead],&len,buf_num);
     if (resp){
         message.clear();
@@ -380,6 +380,7 @@ bool MergCBUS::readCanBus(byte buf_num){
         //eventmatch=memory.hasEvent(buffer[bufIdxdata],buffer[bufIdxdata+1],buffer[bufIdxdata+2],buffer[bufIdxdata+3]);
         eventmatch=hasThisEvent();
      }
+#endif
     return resp;
 }
 
@@ -1068,17 +1069,37 @@ void MergCBUS::clearMsgToSend(){
 byte MergCBUS::sendCanMessage(){
     byte message_size;
     message_size=getMessageSize(mergCanData[0]);
+#ifdef USE_FLEXCAN
+    ///need to implement priority in FlexCAN
+    CAN_message_t txmsg;
+    txmsg.id = nodeId.getCanID();
+    txmsg.len = message_size;
+    txmsg.rtr = 0;
+    txmsg.ext = 0;
+    int i = 0;
+    for(i = 0; i<txmsg.len; i++)
+    {
+        txmsg.buf[i] = mergCanData[i];
+    }
+    
+    if (CANbus.write(txmsg)<>1)
+    {
+        return 0xff;
+    }
+#else
     Can.setPriority(PRIO_LOW,PRIO_MIN_LOWEST);
     byte r=Can.sendMsgBuf(nodeId.getCanID(),0,message_size,mergCanData);
     if (CAN_OK!=r){
         return r;
     }
+#endif
+    
     return OK;
 }
 
 /** \brief
-* Get the message size using the opc
-*/
+ * Get the message size using the opc
+ */
 byte MergCBUS::getMessageSize(byte opc){
     byte a=opc;
     a=a>>5;

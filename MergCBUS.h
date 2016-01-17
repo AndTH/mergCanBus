@@ -3,11 +3,9 @@
 //typedef char byte;
 #endif // BYTE_TYPE
 
-//#if defined(__arm__) && defined(CORE_TEENSY)
-#if defined(__MK20DX256__)
-#define PROCESSOR_TEENSY_3_1	1
-#endif
-//#endif
+// define USE_FLEX_CAN to use the internal can h/w on the Teensy3.1/3.2 boards.
+#define USE_FLEXCAN	1
+
 
 #ifndef MESSAGEPARSER_H
 #define MESSAGEPARSER_H
@@ -24,10 +22,10 @@
 #include "CircularBuffer.h"
 
 
-#ifdef PROCESSOR_TEENSY_3_1
-#define Reset_AVR()
+#ifdef USE_FLEXCAN
+#define Reset_AVR() (_restart_teensyduino_());
 #include <FlexCAN.h>
-#warning TEENSY detected
+#define CAN_125KBPS 125000
 #else
 #define Reset_AVR() asm volatile ("  jmp 0");
 #include "mcp_can.h"
@@ -177,7 +175,7 @@ class MergCBUS
         //let the bus level lib private
     
     
-#ifdef PROCESSOR_TEENSY_3_1
+#ifdef USE_FLEXCAN
     FlexCAN CANbus;
 #else
     MCP_CAN Can;                            /** The CAN object. Deal with the transport layer.*/
