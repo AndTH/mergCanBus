@@ -356,6 +356,48 @@ bool MergCBUS::readCanBus(byte buf_num){
     byte bufIdxhead=110;//position in the general buffer. header need 4 bytes
     eventmatch=false;
 #ifdef USE_FLEXCAN
+    int i;
+    CAN_message_t rxmsg;
+    if(CANbus.available())
+    {
+        resp=CANbus.read(rxmsg);
+        if (resp)
+        {
+            message.clear();
+            message.setCanMessageSize(rxmsg.len);
+            for (i=0;i<rxmsg.len;i++)
+            {
+                buffer[bufIdxdata+i]=rxmsg.buf[i];
+            }
+            message.setDataBuffer(&buffer[bufIdxdata]);
+            if (rxmsg.rtr==0)
+            {
+                message.unsetRTR();
+            }
+            else
+            {
+                message.setRTR();
+            }
+            if (rxmsg.ext)
+            {
+                buffer[bufIdxhead+3] = (byte) (rxmsg.id & 0xFF);
+                buffer[bufIdxhead+2] = (byte) (rxmsg.id >> 8);
+                buffer[bufIdxhead+1] = (byte) ((rxmsg.id>>16) & 0x03);
+                buffer[bufIdxhead+1] += (byte) (((rxmsg.id>>16) & 0x1C) << 3);
+                buffer[bufIdxhead+1] |= 0x08 ;
+                buffer[bufIdxhead+0] = (byte) ((rxmsg.id>>16) >> 5 );
+            }
+            else
+            {
+                buffer[bufIdxhead+0] = (byte) (rxmsg.id >> 3 );
+                buffer[bufIdxhead+1] = (byte) ((rxmsg.id & 0x07 ) << 5);
+                buffer[bufIdxhead+2] = 0;
+                buffer[bufIdxhead+3] = 0;
+            }
+            message.setHeaderBuffer(&buffer[bufIdxhead]);
+            eventmatch=hasThisEvent();
+        }
+    }
 #else
     resp=readCanBus(&buffer[bufIdxdata],&buffer[bufIdxhead],&len,buf_num);
     if (resp){
@@ -429,6 +471,40 @@ bool MergCBUS::readCanBus(){
 */
 bool MergCBUS::readCanBus(byte *data,byte *header,byte *length,byte buf_num){
     byte resp;
+#ifdef USE_FLEXCAN
+    int i;
+    CAN_message_t rxmsg;
+    if(CANbus.available())
+    {
+        if (CANbus.read(rxmsg))
+        {
+            *length=rxmsg.len;
+            for (i=0;i<rxmsg.len;i++)
+            {
+                data[i]=rxmsg.buf[i];
+            }
+            if (rxmsg.ext)
+            {
+                header[3] = (byte) (rxmsg.id & 0xFF);
+                header[2] = (byte) (rxmsg.id >> 8);
+                header[1] = (byte) ((rxmsg.id>>16) & 0x03);
+                header[1] += (byte) (((rxmsg.id>>16) & 0x1C) << 3);
+                header[1] |= 0x08 ;
+                header[0] = (byte) ((rxmsg.id>>16) >> 5 );
+            }
+            else
+            {
+                header[0] = (byte) (rxmsg.id >> 3 );
+                header[1] = (byte) ((rxmsg.id & 0x07 ) << 5);
+                header[2] = 0;
+                header[3] = 0;
+            }
+
+            return true;
+        }
+        return false;
+    }
+#else
     if(CAN_MSGAVAIL == Can.checkReceive()) // check if data coming
     {
         resp=Can.readMsgBuf(length,data,buf_num);
@@ -438,6 +514,8 @@ bool MergCBUS::readCanBus(byte *data,byte *header,byte *length,byte buf_num){
         }
         return false;
     }
+#endif
+    
     return false;
 }
 
@@ -473,8 +551,12 @@ void MergCBUS::doSelfEnnumeration(bool softEnum){
     bufferIndex=0;
     softwareEnum=softEnum;
     state_mode=SELF_ENUMERATION;
+#ifdef USE_FLEXCAN
+#error Need to implement in FlexCAN
+#else
     Can.setPriority(PRIO_LOW,PRIO_MIN_LOWEST);
     Can.sendRTMMessage(nodeId.getCanID());
+#endif
     startTime=millis();
 }
 
@@ -517,7 +599,11 @@ void MergCBUS::finishSelfEnumeration(){
         prepareMessageBuff(OPC_NNACK,
                        highByte(nodeId.getNodeNumber()),
                        lowByte(nodeId.getNodeNumber())  );
+#ifdef USE_FLEXCAN
+#error Need to implement in FlexCAN
+#else
         Can.sendMsgBuf(nodeId.getCanID(),0,3,mergCanData);
+#endif
     }
 
     return;
@@ -1082,7 +1168,7 @@ byte MergCBUS::sendCanMessage(){
         txmsg.buf[i] = mergCanData[i];
     }
     
-    if (CANbus.write(txmsg)<>1)
+    if (CANbus.write(txmsg)!=1)
     {
         return 0xff;
     }

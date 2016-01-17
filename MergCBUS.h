@@ -23,7 +23,7 @@
 
 
 #ifdef USE_FLEXCAN
-#define Reset_AVR() (_restart_teensyduino_());
+#define Reset_AVR() ;
 #include <FlexCAN.h>
 #define CAN_125KBPS 125000
 #else
