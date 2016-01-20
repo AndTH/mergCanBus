@@ -77,8 +77,8 @@ byte Message::getMessageSize(){
 */
 byte Message::getCanId(){
   canId=0;
-  canId=(header[0]<<4)&0xF0;
-  canId=(canId)|(header[1]>>5);
+  canId=(header[0]<<3)&0x7F;
+  canId=(canId)|(header[1]>>5)&0x7;
   return canId;
 
 }
