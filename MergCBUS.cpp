@@ -206,7 +206,7 @@ unsigned int MergCBUS::run(){
         }
     }
 
-    while (readCanBus()){
+    while (readCanBus(0)){
         resp=mainProcess();
         if (resp!=OK ){
             if (userHandler!=0){
@@ -231,6 +231,9 @@ unsigned int MergCBUS::run(){
 }
 
 unsigned int MergCBUS::mainProcess(){
+#ifdef DEBUGDEF
+    Serial.print("CBUS message received.");
+#endif // DEBUGDEF
 
         if (message.getRTR()){
         //if we are a device with can id
@@ -314,13 +317,20 @@ unsigned int MergCBUS::mainProcess(){
             Serial.print ("\t OPC:");
             Serial.print(message.getOpc(),HEX);
             Serial.print("\t STATE:");
-            Serial.println(state_mode);
+            Serial.print(state_mode);
+    Serial.print("\t CANid:");
+    Serial.print(message.getCanId());
+    Serial.print("\t Pri:");
+    Serial.println(message.getPriority());
+    
+
         #endif // DEBUGDEF
 
 
     switch (message.getType()){
         case (DCC):
             if (nodeId.isConsumerNode()){
+                
                 handleDCCMessages();
             }
         break;
@@ -350,7 +360,7 @@ unsigned int MergCBUS::mainProcess(){
 * @return true if a message in the can bus.
 */
 bool MergCBUS::readCanBus(byte buf_num){
-    bool resp;
+    bool resp=false;
     byte bufIdxdata=115;//position in the general buffer. data need 8 bytes
     byte bufIdxhead=110;//position in the general buffer. header need 4 bytes
     eventmatch=false;
@@ -388,13 +398,51 @@ bool MergCBUS::readCanBus(byte buf_num){
             }
             else
             {
-                buffer[bufIdxhead+0] = (byte) (rxmsg.id >> 3 );
+                buffer[bufIdxhead+0] = (byte) ((rxmsg.id & 0x7F ) >> 3 );
                 buffer[bufIdxhead+1] = (byte) ((rxmsg.id & 0x07 ) << 5);
                 buffer[bufIdxhead+2] = 0;
                 buffer[bufIdxhead+3] = 0;
             }
             message.setHeaderBuffer(&buffer[bufIdxhead]);
+            message.setPriority((rxmsg.id & 0x600)>>9);
             eventmatch=hasThisEvent();
+#ifdef DEBUGDEF
+            // print message
+            int j=0;
+            
+            Serial.print("Message: ");
+            for (j=0;j<rxmsg.len;j++){
+                Serial.print (rxmsg.buf[j], HEX);
+                Serial.print("\t");
+            }
+            for (j=rxmsg.len;j<8;j++){
+                Serial.print("-\t");
+            }
+            Serial.print("Header: ");
+            for (j=0;j<4;j++){
+                Serial.print (buffer[bufIdxhead+j], HEX);
+                Serial.print("\t");
+            }
+            Serial.print("CANid: ");
+            Serial.print (rxmsg.id & 0x7F);
+            Serial.print("\t");
+            
+            Serial.print("D Pri: ");
+            Serial.print ((rxmsg.id & 0x600)>>9);
+            Serial.print("\t");
+            
+            Serial.print("M Pri: ");
+            Serial.print ((rxmsg.id & 0x180)>>7);
+            Serial.print("\t");
+            
+            Serial.print("rtr: ");
+            Serial.print (rxmsg.rtr);
+            Serial.print("\t");
+            
+            
+            Serial.println();
+#endif // DEBUGDEF
+
         }
     }
 #else
@@ -435,8 +483,17 @@ bool MergCBUS::readCanBus(){
     bool resp=false;
     byte bufidx=90;//position in the general buffer. data need 8 bytes
     eventmatch=false;
+
+#ifdef DEBUGDEF
+    //Serial.println("readCanBus()");
+#endif // DEBUGDEF
+   
+    
     resp=msgBuffer.get(&buffer[bufidx]);
     if (resp){
+#ifdef DEBUGDEF
+        Serial.println("readCanBus() - got buffer");
+#endif // DEBUGDEF
         message.clear();
         message.setCanMessageSize(buffer[bufidx]);
         message.setHeaderBuffer(&buffer[bufidx+2]);
@@ -498,7 +555,42 @@ bool MergCBUS::readCanBus(byte *data,byte *header,byte *length,byte buf_num){
                 header[2] = 0;
                 header[3] = 0;
             }
-
+#ifdef DEBUGDEF
+            // print message
+            int j=0;
+            
+            Serial.print("Message: ");
+            for (j=0;j<rxmsg.len;j++){
+                Serial.print (rxmsg.buf[j], HEX);
+                Serial.print("\t");
+            }
+            for (j=rxmsg.len;j<8;j++){
+                Serial.print("-\t");
+            }
+            Serial.print("Header: ");
+            for (j=0;j<4;j++){
+                Serial.print (header[j], HEX);
+                Serial.print("\t");
+            }
+            Serial.print("CANid: ");
+            Serial.print (rxmsg.id & 0x7F);
+            Serial.print("\t");
+            
+            Serial.print("D Pri: ");
+            Serial.print ((rxmsg.id & 0x600)>>9);
+            Serial.print("\t");
+            
+            Serial.print("M Pri: ");
+            Serial.print ((rxmsg.id & 0x180)>>7);
+            Serial.print("\t");
+            
+            Serial.print("rtr: ");
+            Serial.print (rxmsg.rtr);
+            Serial.print("\t");
+            
+            
+            Serial.println();
+#endif // DEBUGDEF
             return true;
         }
         return false;
@@ -1509,10 +1601,10 @@ void MergCBUS::learnEvent(){
     unsigned int ev,nn,resp;
     byte ind,val,evidx;
          #ifdef DEBUGDEF
-            Serial.println("Learning event.");
+            Serial.println("Learning event....");
             //printSentMessage();
         #endif // DEBUGDEF
-
+  
         if (message.getType()==CONFIG){
             if (message.getOpc()!=OPC_EVLRN && message.getOpc()!=OPC_EVLRNI){
                 handleConfigMessages();
@@ -1898,12 +1990,50 @@ void MergCBUS::cbusRead(){
             }
             else
             {
+                //*((uint32_t*)(&buffer[bufIdxhead]))=(((rxmsg.id)&0x000007FF)<<18);
+                
                 buffer[bufIdxhead+0] = (byte) (rxmsg.id >> 3 );
                 buffer[bufIdxhead+1] = (byte) ((rxmsg.id & 0x07 ) << 5);
                 buffer[bufIdxhead+2] = 0;
                 buffer[bufIdxhead+3] = 0;
             }
             msgBuffer.put(&buffer[bufIdx]);
+#ifdef DEBUGDEF
+            // print message
+            int j=0;
+            
+            Serial.print("Message: ");
+            for (j=0;j<rxmsg.len;j++){
+                Serial.print (buffer[bufIdx+6+j], HEX);
+                Serial.print("\t");
+            }
+            for (j=rxmsg.len;j<8;j++){
+                Serial.print("-\t");
+            }
+            Serial.print("Header: ");
+            for (j=0;j<4;j++){
+                Serial.print (buffer[bufIdx+2+j], HEX);
+                Serial.print("\t");
+            }
+            Serial.print("CANid: ");
+            Serial.print (rxmsg.id & 0x7F);
+            Serial.print("\t");
+            
+            Serial.print("D Pri: ");
+            Serial.print ((rxmsg.id & 0x600)>>9);
+            Serial.print("\t");
+            
+            Serial.print("M Pri: ");
+            Serial.print ((rxmsg.id & 0x180)>>7);
+            Serial.print("\t");
+            
+            Serial.print("rtr: ");
+            Serial.print (rxmsg.rtr);
+            Serial.print("\t");
+            
+            
+            Serial.println();
+#endif // DEBUGDEF
         }
        
     }

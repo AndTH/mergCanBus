@@ -10,7 +10,7 @@
 #ifndef MESSAGEPARSER_H
 #define MESSAGEPARSER_H
 
-//#define DEBUGDEF 1
+#define DEBUGDEF 1
 
 #include <Arduino.h>
 #include <EEPROM.h>
@@ -128,7 +128,7 @@ class MergCBUS
         /**\brief Reset EEPROM.*/
         void setUpNewMemory();
         /**\brief Print all EEPROM values. Works just if DEBUGREF is set.*/
-        void dumpMemory(){memory.dumpMemory();};
+        void dumpMemory(){Serial.println("dump memory"); memory.dumpMemory();};
         /**\brief Set the CBUS modules stardard leds.*/
         void setLeds(byte green,byte yellow);
         /**\brief Set the CBUS modules stardard push button.*/
