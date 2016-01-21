@@ -318,10 +318,10 @@ unsigned int MergCBUS::mainProcess(){
             Serial.print(message.getOpc(),HEX);
             Serial.print("\t STATE:");
             Serial.print(state_mode);
-    Serial.print("\t CANid:");
-    Serial.print(message.getCanId());
-    Serial.print("\t Pri:");
-    Serial.println(message.getPriority());
+            Serial.print("\t CANid:");
+            Serial.print(message.getCanId());
+            Serial.print("\t Pri:");
+            Serial.println(message.getPriority());
     
 
         #endif // DEBUGDEF
@@ -331,17 +331,17 @@ unsigned int MergCBUS::mainProcess(){
         case (DCC):
             if (nodeId.isConsumerNode()){
                 
-                handleDCCMessages();
+                return handleDCCMessages();
             }
         break;
         case (ACCESSORY):
              if (nodeId.isConsumerNode()){
-                handleACCMessages();
+                return handleACCMessages();
             }
         break;
         case (GENERAL):
              if (nodeId.isConsumerNode()){
-                handleGeneralMessages();
+                return handleGeneralMessages();
             }
         break;
         case (CONFIG):
@@ -351,7 +351,7 @@ unsigned int MergCBUS::mainProcess(){
             return UNKNOWN_MSG_TYPE;
     }
 
-    return OK;
+    return !OK;
 
 }
 
@@ -1200,7 +1200,10 @@ bool MergCBUS::setNodeVariableAuto(byte ind, byte val,bool autoErr){
 * has to deal with ACON,ACOF,ARON,AROF, AREQ,ASON,ASOF
 */
 byte MergCBUS::handleACCMessages(){
+    Serial.println("ACCESSORY message handler");
     if (userHandler!=0){
+        Serial.println("USER message handler");
+
         userHandler(&message,this);
     }
     return OK;
@@ -1211,6 +1214,7 @@ byte MergCBUS::handleACCMessages(){
 * Has to handle the EXTC messages
 */
 byte MergCBUS::handleGeneralMessages(){
+    Serial.println("GENERAL message handler");
 
     switch ((unsigned int) message.getOpc()){
     case OPC_ARST:
@@ -1233,6 +1237,7 @@ byte MergCBUS::handleGeneralMessages(){
 * Handle DCC messages. Still to TODO.
 */
 byte MergCBUS::handleDCCMessages(){
+    Serial.println("DCC message handler");
     return 0;
 }
 
