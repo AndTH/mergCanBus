@@ -755,57 +755,79 @@ void Message::createOnEvent(unsigned int nodeNumber,bool longEvent,unsigned int 
  */
 void Message::createOffEvent(unsigned int nodeNumber,bool longEvent,unsigned int eventNumber,byte numDataBytes,byte* msgdata){
     switch (numDataBytes){
-    case (0):
-        if (longEvent){
-            data[0]=OPC_ACOF;
-        }else {
-            data[0]=OPC_ASOF;
-        }
-        break;
-    case (1):
-        if (msgdata!=0){
-            data[5]=msgdata[0];
-        }
-
-        if (longEvent){
-            data[0]=OPC_ACOF1;
-        }else {
-            data[0]=OPC_ASOF1;
-        }
-        break;
-    case(2):
-        if (msgdata!=0){
-            data[5]=msgdata[0];
-            data[6]=msgdata[1];
-        }
-
-        if (longEvent){
-            data[0]=OPC_ACOF2;
-        }else {
-            data[0]=OPC_ASOF2;
-        }
-        break;
-    case(3):
-        if (msgdata!=0){
-            data[5]=msgdata[0];
-            data[6]=msgdata[1];
-            data[7]=msgdata[2];
-        }
-
-        if (longEvent){
-            data[0]=OPC_ACOF3;
-        }else {
-            data[0]=OPC_ASOF3;
-        }
-        break;
-    default:
-        return;
-        break;
+        case (0):
+            if (longEvent){
+                data[0]=OPC_ACOF;
+            }else {
+                data[0]=OPC_ASOF;
+            }
+            break;
+        case (1):
+            if (msgdata!=0){
+                data[5]=msgdata[0];
+            }
+            
+            if (longEvent){
+                data[0]=OPC_ACOF1;
+            }else {
+                data[0]=OPC_ASOF1;
+            }
+            break;
+        case(2):
+            if (msgdata!=0){
+                data[5]=msgdata[0];
+                data[6]=msgdata[1];
+            }
+            
+            if (longEvent){
+                data[0]=OPC_ACOF2;
+            }else {
+                data[0]=OPC_ASOF2;
+            }
+            break;
+        case(3):
+            if (msgdata!=0){
+                data[5]=msgdata[0];
+                data[6]=msgdata[1];
+                data[7]=msgdata[2];
+            }
+            
+            if (longEvent){
+                data[0]=OPC_ACOF3;
+            }else {
+                data[0]=OPC_ASOF3;
+            }
+            break;
+        default:
+            return;
+            break;
     }
     data[1]=highByte(nodeNumber);
     data[2]=lowByte(nodeNumber);
     data[3]=highByte(eventNumber);
     data[4]=lowByte(eventNumber);
+}
+
+void Message::createDataEvent(unsigned int nodeNumber,byte numDataBytes,byte* msgdata)
+{
+    int i;
+    data[0]=OPC_DDES;
+    data[1]=highByte(nodeNumber);
+    data[2]=lowByte(nodeNumber);
+    if (msgdata!=0)
+    {
+        for (i=0;i<numDataBytes;i++)
+        {
+            data[3+i]=msgdata[i];
+        }
+    }
+}
+
+void Message::createESTOPEvent()
+{
+data[0]=OPC_RESTP;
+setPriority(0);
+
 }
 
 /**

@@ -198,6 +198,8 @@ class Message
         byte getAccExtraData(byte idx);//idx starts at 1
         void createOnEvent(unsigned int nodeNumber,bool longEvent,unsigned int eventNumber,byte numDataBytes,byte* data);
         void createOffEvent(unsigned int nodeNumber,bool longEvent,unsigned int eventNumber,byte numDataBytes,byte* data);
+    void createDataEvent(unsigned int nodeNumber,byte numDataBytes,byte* msgdata);
+    void createESTOPEvent();
 
 
     protected:
