@@ -3,6 +3,10 @@
 //typedef char byte;
 #endif // BYTE_TYPE
 
+// define USE_FLEX_CAN to use the internal can h/w on the Teensy3.1/3.2 boards.
+#define USE_FLEXCAN	1
+
+
 #ifndef MESSAGEPARSER_H
 #define MESSAGEPARSER_H
 
@@ -15,11 +19,19 @@
 #include <avr/wdt.h>
 #include "Message.h"
 #include "MergNodeIdentification.h"
-#include "mcp_can.h"
+//#include "mcp_can.h"
 #include "MergMemoryManagement.h"
 #include "CircularBuffer.h"
 
+
+#ifdef USE_FLEXCAN
+#define Reset_AVR() ;
+#include <FlexCAN.h>
+#define CAN_125KBPS 125000
+#else
 #define Reset_AVR() asm volatile ("  jmp 0");
+#include "mcp_can.h"
+#endif
 
 #define SELF_ENUM_TIME 1000      /** Defines the timeout used for self ennumeration mode.Milliseconds*/
 #define TEMP_BUFFER_SIZE 128    /** Size of a internal buffer for general usage.*/
@@ -56,6 +68,9 @@ enum can_error {OK=0,                   /**< Message sent.*/
 *   A general class that support the MergCBUS protocol.
 *   The class is used to all operations regarding the protocol, but is flexible enough to allow you to use general can messages.
 *   It uses a modified version of mcp_can.h, that included the CAN header manipulation and RTR messages.
+*
+*   The Teensy 3.1 version uses a modified version of FlexCAN....
+*
 *   When using the CBUS the user has to set the node information:
 *   -The manufacturer ID as a HEX numeric (If the manufacturer has a NMRA number this can be used)
 *   -Minor code version as an alphabetic character (ASCII)
