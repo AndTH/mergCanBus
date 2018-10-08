@@ -19,18 +19,18 @@
 #include <avr/wdt.h>
 #include "Message.h"
 #include "MergNodeIdentification.h"
-//#include "mcp_can.h"
 #include "MergMemoryManagement.h"
 #include "CircularBuffer.h"
 
 
 #ifdef USE_FLEXCAN
-#define Reset_AVR() ;
-#include <FlexCAN.h>
-#define CAN_125KBPS 125000
+	#define Reset_AVR() ;
+	#include <FlexCAN.h>
+	#define CAN_125KBPS 125000
+	#define MCP_16MHz 1
 #else
-#define Reset_AVR() asm volatile ("  jmp 0");
-#include "mcp_can.h"
+	#define Reset_AVR() asm volatile ("  jmp 0");
+	#include "mcp_can.h"
 #endif
 
 #define SELF_ENUM_TIME 1000      /** Defines the timeout used for self ennumeration mode.Milliseconds*/
@@ -199,7 +199,11 @@ class MergCBUS
     protected:
     private:
         //let the bus level lib private
-        MCP_CAN Can;                            /** The CAN object. Deal with the transport layer.*/
+#ifdef USE_FLEXCAN
+    	FlexCAN CANbus;
+#else
+    	MCP_CAN Can;                            /** The CAN object. Deal with the transport layer.*/
+#endif
         byte node_mode;                         /** Slim or Flim*/
         byte mergCanData[CANDATA_SIZE];         //can data . CANDATA_SIZE defined in message.h
         Message message;                        //canbus message representation

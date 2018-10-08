@@ -366,7 +366,8 @@ uint8_t MergCBUS::mainProcess(){
     switch (message.getType()){
         case (DCC):
             if (dccHandler != 0){
-                return dccHandler(&message,this);
+                dccHandler(&message,this);
+		return OK;
             }
         break;
         case (ACCESSORY):
