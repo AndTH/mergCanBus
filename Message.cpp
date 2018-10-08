@@ -932,3 +932,23 @@ message_type Message::findType(byte opc){
     return RESERVED;
 
 }
+void Message::createDataEvent(unsigned int nodeNumber,byte numDataBytes,byte* msgdata)
+{
+    int i;
+    data[0]=OPC_DDES;
+    data[1]=highByte(nodeNumber);
+    data[2]=lowByte(nodeNumber);
+    if (msgdata!=0)
+    {
+        for (i=0;i<numDataBytes;i++)
+        {
+            data[3+i]=msgdata[i];
+        }
+    }
+}
+
+void Message::createESTOPEvent()
+{
+    data[0]=OPC_RESTP;
+    setPriority(0);
+}
