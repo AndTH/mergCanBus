@@ -4,7 +4,28 @@
 #endif // BYTE_TYPE
 
 // define USE_FLEX_CAN to use the internal can h/w on the Teensy3.1/3.2 boards.
-#define USE_FLEXCAN	1
+
+#if defined(TEENSYDUINO) 
+
+    //  --------------- Teensy -----------------
+
+    #if defined(__MK20DX128__)       
+        #define BOARD "Teensy 3.0"
+	#define USE_FLEXCAN	1
+    #elif defined(__MK20DX256__)       
+        #define BOARD "Teensy 3.2" 
+	#define USE_FLEXCAN	1
+    #elif defined(__MK64FX512__)
+        #define BOARD "Teensy 3.5"
+	#define USE_FLEXCAN	1
+    #elif defined(__MK66FX1M0__)
+        #define BOARD "Teensy 3.6"
+	#define USE_FLEXCAN	1
+    #else
+       #error "Unknown board"
+    #endif
+#endif
+
 
 
 #ifndef MESSAGEPARSER_H
