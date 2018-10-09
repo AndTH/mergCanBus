@@ -249,7 +249,7 @@ uint8_t MergCBUS::run(){
         }
     }
 
-    while (readCanBus()){
+    while (readCanBus(0)){
 
         resp = mainProcess();
         if (resp != OK ){
@@ -358,7 +358,7 @@ uint8_t MergCBUS::mainProcess(){
         #ifdef DEBUGDEF
             Serial.print(F("Message type:"));
             Serial.print(message.getType());
-            Serial.print ("\t OPC:"));
+            Serial.print (F("\t OPC:"));
             Serial.print(message.getOpc(),HEX);
             Serial.print(F("\t STATE:"));
             Serial.println(state_mode);
@@ -395,7 +395,7 @@ uint8_t MergCBUS::mainProcess(){
 */
 bool MergCBUS::readCanBus(byte buf_num){
     byte len = 0;//number of bytes read.
-    bool resp;
+    bool resp=false;
     byte bufIdxdata = 115;//position in the general buffer. data need 8 bytes
     byte bufIdxhead = 110;//position in the general buffer. header need 4 bytes
     eventmatch = false;
@@ -547,6 +547,7 @@ bool MergCBUS::readCanBus(){
 * @return number of bytes read;
 */
 bool MergCBUS::readCanBus(byte *data,byte *header,byte *length,byte buf_num){
+
 #ifdef USE_FLEXCAN
     int i;
     CAN_message_t rxmsg;
@@ -1732,7 +1733,7 @@ void MergCBUS::learnEvent(){
                     Serial.print(ind);
                     Serial.print(F(" value "));
                     Serial.print(val);
-                    Serial. print(" of event "));
+                    Serial.print(F(" of event "));
                     Serial.println(evidx);
                     Serial.print(F("max events: "));
                     Serial.println(memory.getNumEvents());
@@ -2281,6 +2282,7 @@ void MergCBUS::cbusRead(){
     byte bufIdx = 110;//1 byte for the message size.1 byte for RTR, 4 bytes for header. 8 bytes to max message
 
     bool resp;
+
 #ifdef USE_FLEXCAN
     int i;
     byte bufIdxhead = bufIdx+2;
