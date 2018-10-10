@@ -249,7 +249,11 @@ uint8_t MergCBUS::run(){
         }
     }
 
-    while (readCanBus(0)){
+#ifdef USE_FLEXCAN
+   while (readCanBus(0)){
+#else
+   while (readCanBus()){
+#endif
 
         resp = mainProcess();
         if (resp != OK ){
